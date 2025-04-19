@@ -1,12 +1,15 @@
 // src/lib/api.ts
+import { ResponseModel } from '@/types/ResponseModel';
 import axios from 'axios';
-import { ResponseModel } from '../hooks/MetadataStore';
+
 
 const API_BASE_URL = 'http://0.0.0.0:8000';
 
 export const uploadFile = async (filePath: string): Promise<ResponseModel> => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/upload?file_path=${encodeURIComponent(filePath)}`);
+    const response = await axios.post(`${API_BASE_URL}/upload`, {
+      file_path: filePath
+    });
     console.log('File uploaded successfully:', response);
     return response.data;
   } catch (error) {

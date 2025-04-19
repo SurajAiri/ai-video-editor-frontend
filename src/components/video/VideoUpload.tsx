@@ -5,11 +5,15 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Upload, Video, X } from 'lucide-react';
 import useVideoStore from '@/hooks/MetadataStore';
 import { uploadFile } from '@/apis/api';
+import { MetadataModel } from '@/types/MetadataModel';
+import { useNavigate } from 'react-router-dom';
 
 const VideoUploader = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const navigate = useNavigate();
   
   const { 
     selectedFile, 
@@ -18,9 +22,7 @@ const VideoUploader = () => {
     setSelectedFile, 
     setVideoPreviewUrl, 
     setIsLoading,
-    setJobId,
     setMetadata,
-    setProjectStatus
   } = useVideoStore();
 
   const handleFileSelect = (file: File) => {
@@ -91,12 +93,13 @@ const VideoUploader = () => {
       const response = await uploadFile(filePath);
       
       if (response.status === 'success' && response.data) {
-        setJobId(response.job_id);
-        setMetadata(response.data);
-        setProjectStatus(response.data.status);
+      
+        setMetadata(response.data as MetadataModel);
         
         // In a real application, this would navigate to the processing screen
         console.log('Upload successful:', response);
+        // go to analysis creen
+        navigate(`/analysis/${response.data.job_id}`);
       } else {
         setUploadError('Upload failed: ' + response.message);
       }
@@ -170,7 +173,7 @@ const VideoUploader = () => {
         <Button 
           onClick={handleUpload} 
           disabled={!selectedFile || isLoading}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
         >
           {isLoading ? (
             <>
