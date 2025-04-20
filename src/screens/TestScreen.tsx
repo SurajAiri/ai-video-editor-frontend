@@ -4,8 +4,8 @@ import React from 'react';
 const TestScreen: React.FC = () => {
   
     const handleApiCall = async () => {
-      const jobId = "76a4497e-d16a-44c6-a5ff-b45dd82d8f52";
-      const response = await getInvalidSegments(jobId);
+      const jobId = "d22c4d7c-f4e8-4c13-b2a6-805cd1c1696f";
+      const response = await getStatus(jobId);
       console.log(response);
 
     }
