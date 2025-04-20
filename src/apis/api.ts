@@ -1,4 +1,4 @@
-// src/lib/api.ts
+// src/apis/api.ts
 import { ResponseModel } from '@/types/ResponseModel';
 import axios from 'axios';
 

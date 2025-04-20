@@ -1,5 +1,6 @@
 
 export enum ProjectStatus {
+  ERROR = 'error',
   CREATED = 'created',
   UPLOADED = 'uploaded',
   TRANSCRIPT_START = 'transcript_start',
@@ -11,7 +12,6 @@ export enum ProjectStatus {
   PROCESSED_INVALID_SEGMENT = 'processed_invalid_segment',
   TRIM_START = 'trim_start',
   COMPLETED = 'completed',
-  ERROR = 'error'
 }
 
 export interface MetadataModel {

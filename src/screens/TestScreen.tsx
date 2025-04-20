@@ -1,11 +1,11 @@
-import { getStatus, processAll } from '@/apis/api';
+import { getInvalidSegments, getStatus, getTranscriptWord, processAll } from '@/apis/api';
 import React from 'react';
 
 const TestScreen: React.FC = () => {
   
     const handleApiCall = async () => {
-      const jobId = "57132490-36a6-4f4a-97b2-15b5fd78767e";
-      const response = await processAll(jobId);
+      const jobId = "76a4497e-d16a-44c6-a5ff-b45dd82d8f52";
+      const response = await getInvalidSegments(jobId);
       console.log(response);
 
     }
