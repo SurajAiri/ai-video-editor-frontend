@@ -39,3 +39,24 @@ export const getStatus = async (jobId: string): Promise<ResponseModel> => {
     throw error;
   }
 };
+
+
+export const getTranscriptWord = async (jobId: string): Promise<ResponseModel> => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/transcript/${jobId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting transcript word:', error);
+    throw error;
+  }
+}
+
+export const getInvalidSegments = async (jobId: string): Promise<ResponseModel> => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/invalids/${jobId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting invalid segments:', error);
+    throw error;
+  }
+}
