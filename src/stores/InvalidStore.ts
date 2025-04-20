@@ -1,3 +1,4 @@
+// /src/stores/InvalidStore.ts
 import { getInvalidSegments } from '@/apis/api';
 import { InvalidModel } from '@/types/InvalidModel';
 import { create } from 'zustand';

@@ -1,3 +1,5 @@
+// src/stores/TranscriptStore.ts
+
 import { getTranscriptWord } from '@/apis/api';
 import { TranscriptWordModel } from '@/types/TranscriptWordModel';
 import { create } from 'zustand';
