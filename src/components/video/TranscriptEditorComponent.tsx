@@ -61,19 +61,19 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
           words: [wordObj],
           startIndex: index,
           endIndex: index,
-          start_time: wordObj.start_time,
-          end_time: wordObj.end_time
+          start_time: wordObj.start,
+          end_time: wordObj.end
         };
       } else {
         // Check if this word is continuous with the current group
         // Consider words continuous if the gap is less than 0.3 seconds
-        const timeDiff = wordObj.start_time - currentGroup.end_time;
+        const timeDiff = wordObj.start - currentGroup.end_time;
         
         if (timeDiff <= 0.3) {
           // Add to current group
           currentGroup.words.push(wordObj);
           currentGroup.endIndex = index;
-          currentGroup.end_time = wordObj.end_time;
+          currentGroup.end_time = wordObj.end;
         } else {
           // Save the current group and start a new one
           groups.push(currentGroup);
@@ -81,8 +81,8 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
             words: [wordObj],
             startIndex: index,
             endIndex: index,
-            start_time: wordObj.start_time,
-            end_time: wordObj.end_time
+            start_time: wordObj.start,
+            end_time: wordObj.end
           };
         }
       }
@@ -142,8 +142,8 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
       setSelectedRange({
         startIndex: globalIndex,
         endIndex: globalIndex,
-        start_time: transcript[globalIndex].start_time,
-        end_time: transcript[globalIndex].end_time
+        start_time: transcript[globalIndex].start,
+        end_time: transcript[globalIndex].end
       });
     } else if (selectedRange.startIndex === globalIndex && selectedRange.endIndex === globalIndex) {
       // Deselect if clicking on a single word selection
@@ -156,8 +156,8 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
       setSelectedRange({
         startIndex: newStartIndex,
         endIndex: newEndIndex,
-        start_time: transcript[newStartIndex].start_time,
-        end_time: transcript[newEndIndex].end_time
+        start_time: transcript[newStartIndex].start,
+        end_time: transcript[newEndIndex].end
       });
     }
   };
@@ -165,13 +165,13 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
   // Check if word is part of an invalid segment
   const isWordInInvalidSegment = (wordIndex: number) => {
     return invalidSegments.some(segment => {
-      const segmentStartTime = parseFloat(segment.start_time);
-      const segmentEndTime = parseFloat(segment.end_time);
+      const segmentStartTime = segment.start_time;
+      const segmentEndTime = segment.end_time;
       
       if (wordIndex >= transcript.length) return false;
       
-      const wordStartTime = transcript[wordIndex].start_time;
-      const wordEndTime = transcript[wordIndex].end_time;
+      const wordStartTime = transcript[wordIndex].start;
+      const wordEndTime = transcript[wordIndex].end;
       
       return (
         (wordStartTime >= segmentStartTime && wordStartTime <= segmentEndTime) ||
@@ -184,13 +184,13 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
   // Get the invalid segment type for a word
   const getInvalidSegmentTypeForWord = (wordIndex: number) => {
     for (const segment of invalidSegments) {
-      const segmentStartTime = parseFloat(segment.start_time);
-      const segmentEndTime = parseFloat(segment.end_time);
+      const segmentStartTime = segment.start_time;
+      const segmentEndTime = segment.end_time;
       
       if (wordIndex >= transcript.length) return null;
       
-      const wordStartTime = transcript[wordIndex].start_time;
-      const wordEndTime = transcript[wordIndex].end_time;
+      const wordStartTime = transcript[wordIndex].start;
+      const wordEndTime = transcript[wordIndex].end;
       
       if (
         (wordStartTime >= segmentStartTime && wordStartTime <= segmentEndTime) ||
@@ -232,170 +232,145 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Transcript Editor</CardTitle>
           
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={toggleShortcutHelp}
-                >
-                  <Keyboard className="h-4 w-4 mr-1" />
-                  Shortcuts
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                Press ? to show/hide shortcut help
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex items-center text-xs text-muted-foreground">
+            <span className="mr-1">Shortcuts:</span>
+            <Badge variant="outline" className="mr-1">R</Badge>
+            <Badge variant="outline" className="mr-1">F</Badge>
+            <Badge variant="outline" className="mr-1">P</Badge>
+            <Badge variant="outline">Esc</Badge>
+          </div>
         </CardHeader>
         <CardContent>
-          {transcriptLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="flex flex-col items-center space-y-2">
-                <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin"></div>
-                <p className="text-sm text-gray-500">Loading transcript...</p>
+          <ScrollArea className="h-60 mb-4">
+            <div className="space-y-2 p-2">
+              {wordGroups.map((group, groupIndex) => (
+                <div key={groupIndex} className="flex flex-wrap gap-x-1 mb-2 border-b pb-1">
+                  {/* Group timestamp indicator */}
+                  <div className="w-full text-xs text-muted-foreground mb-1">
+                    {group.start_time.toFixed(1)}s - {group.end_time.toFixed(1)}s
+                  </div>
+                  
+                  {/* Words within the group */}
+                  <div className="flex flex-wrap gap-1">
+                    {group.words.map((wordObj, wordIndex) => {
+                      const globalIndex = group.startIndex + wordIndex;
+                      
+                      const isSelected = selectedRange && 
+                        globalIndex >= selectedRange.startIndex && 
+                        globalIndex <= selectedRange.endIndex;
+                      
+                      const isInvalid = isWordInInvalidSegment(globalIndex);
+                      const invalidType = getInvalidSegmentTypeForWord(globalIndex);
+                      
+                      // Determine styling based on selection and invalid status
+                      let classes = "inline-block px-1 py-0.5 rounded cursor-pointer transition-colors";
+                      
+                      if (isSelected) {
+                        classes += " bg-primary text-primary-foreground";
+                      } else if (isInvalid) {
+                        switch(invalidType) {
+                          case "repetition":
+                            classes += " bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-200";
+                            break;
+                          case "filler_word":
+                            classes += " bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200";
+                            break;
+                          case "long_pauses":
+                            classes += " bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
+                            break;
+                          default:
+                            classes += " bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200";
+                        }
+                      } else {
+                        classes += " hover:bg-accent";
+                      }
+                      
+                      return (
+                        <span
+                          key={wordIndex}
+                          className={classes}
+                          onClick={() => handleWordClick(globalIndex)}
+                        >
+                          {wordObj.word}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          
+          {selectedRange && (
+            <div className="border rounded-md p-3 mb-4 bg-accent/50">
+              <div className="font-medium mb-2">Selected Range:</div>
+              <div className="text-sm mb-2">
+                Time: {selectedRange.start_time.toFixed(2)}s - {selectedRange.end_time.toFixed(2)}s
+              </div>
+              <div className="text-sm mb-3">
+                Text: {transcript.slice(selectedRange.startIndex, selectedRange.endIndex + 1).map(item => item.word).join(' ')}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="destructive" size="sm" onClick={() => addInvalidSegment("repetition")}>
+                        Mark as Repetition
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      Shortcut: R
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="secondary" size="sm" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={() => addInvalidSegment("filler_word")}>
+                        Mark as Filler Words
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      Shortcut: F
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="secondary" size="sm" className="bg-blue-500 hover:bg-blue-600 text-white" onClick={() => addInvalidSegment("long_pauses")}>
+                        Mark as Long Pause
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      Shortcut: P
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedRange(null)}>
+                        Clear Selection
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      Shortcut: Esc
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="mb-3 text-sm text-muted-foreground flex flex-wrap gap-2">
-                <span>Keyboard shortcuts:</span>
-                <Badge variant="outline">R: Repetition</Badge>
-                <Badge variant="outline">F: Filler Words</Badge>
-                <Badge variant="outline">P: Long Pause</Badge>
-                <Badge variant="outline">Esc: Clear Selection</Badge>
-              </div>
-              
-              <ScrollArea className="h-[300px] mb-4">
-                <div className="space-y-2 p-2">
-                  {wordGroups.map((group, groupIndex) => (
-                    <div key={groupIndex} className="flex flex-wrap gap-x-1 mb-2 border-b pb-1">
-                      {/* Group timestamp indicator */}
-                      <div className="w-full text-xs text-muted-foreground mb-1">
-                        {group.start_time}s - {group.end_time}s
-                        {/* {group.start_time.toFixed(1)}s - {group.end_time.toFixed(1)}s */}
-                      </div>
-                      
-                      {/* Words within the group */}
-                      <div className="flex flex-wrap gap-1">
-                        {group.words.map((wordObj, wordIndex) => {
-                          const globalIndex = group.startIndex + wordIndex;
-                          
-                          const isSelected = selectedRange && 
-                            globalIndex >= selectedRange.startIndex && 
-                            globalIndex <= selectedRange.endIndex;
-                          
-                          const isInvalid = isWordInInvalidSegment(globalIndex);
-                          const invalidType = getInvalidSegmentTypeForWord(globalIndex);
-                          
-                          // Determine styling based on selection and invalid status
-                          let bgClass = "hover:bg-muted";
-                          if (isSelected) {
-                            bgClass = "bg-primary text-primary-foreground";
-                          } else if (isInvalid) {
-                            switch(invalidType) {
-                              case "repetition":
-                                bgClass = "bg-red-100 hover:bg-red-200";
-                                break;
-                              case "filler_words":
-                                bgClass = "bg-yellow-100 hover:bg-yellow-200";
-                                break;
-                              case "long_pause":
-                                bgClass = "bg-blue-100 hover:bg-blue-200";
-                                break;
-                              default:
-                                bgClass = "bg-gray-100 hover:bg-gray-200";
-                            }
-                          }
-                          
-                          return (
-                            <span
-                              key={wordIndex}
-                              className={`inline-block px-1 py-0.5 rounded cursor-pointer transition-colors ${bgClass}`}
-                              onClick={() => handleWordClick(globalIndex)}
-                            >
-                              {wordObj.word}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              
-              {selectedRange && (
-                <div className="border rounded-md p-3 mb-4">
-                  <div className="font-medium mb-2">Selected Range:</div>
-                  <div className="text-sm mb-2">
-                    Time: {selectedRange.start_time.toFixed(2)}s - {selectedRange.end_time.toFixed(2)}s
-                  </div>
-                  <div className="text-sm mb-3">
-                    Text: {transcript.slice(selectedRange.startIndex, selectedRange.endIndex + 1).map(item => item.word).join(' ')}
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" onClick={() => addInvalidSegment("repetition")}>
-                            Mark as Repetition
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          Shortcut: R
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" onClick={() => addInvalidSegment("filler_words")}>
-                            Mark as Filler Words
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          Shortcut: F
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" onClick={() => addInvalidSegment("long_pause")}>
-                            Mark as Long Pause
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          Shortcut: P
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setSelectedRange(null)}>
-                            Clear Selection
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          Shortcut: Esc
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </div>
-              )}
-            </>
           )}
         </CardContent>
         <CardFooter>
           <Button 
+            variant="default"
             onClick={() => {
+              // Here you would typically save changes to your backend
               console.log("Saving transcript changes", invalidSegments);
             }}
             className="w-full"
@@ -407,31 +382,33 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
       
       {/* Keyboard shortcut help modal */}
       {showShortcutHelp && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={toggleShortcutHelp}>
-          <Card className="w-96" onClick={e => e.stopPropagation()}>
-            <CardHeader>
-              <CardTitle>Keyboard Shortcuts</CardTitle>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={toggleShortcutHelp}>
+          <Card className="w-96 border-accent-foreground shadow-lg" onClick={e => e.stopPropagation()}>
+            <CardHeader className="bg-muted/50">
+              <CardTitle className="flex items-center">
+                <Keyboard className="mr-2 h-4 w-4" /> Keyboard Shortcuts
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="font-medium">r</span>
+                <div className="flex justify-between items-center py-1 border-b">
+                  <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">r</Badge>
                   <span>Mark as Repetition</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">f</span>
+                <div className="flex justify-between items-center py-1 border-b">
+                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">f</Badge>
                   <span>Mark as Filler Words</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">p</span>
+                <div className="flex justify-between items-center py-1 border-b">
+                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">p</Badge>
                   <span>Mark as Long Pause</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Esc</span>
+                <div className="flex justify-between items-center py-1 border-b">
+                  <Badge>Esc</Badge>
                   <span>Clear Selection</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">?</span>
+                <div className="flex justify-between items-center py-1">
+                  <Badge>?</Badge>
                   <span>Show/Hide Shortcuts</span>
                 </div>
               </div>

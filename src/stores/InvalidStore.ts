@@ -19,6 +19,8 @@ interface InvalidStore {
   // Actions
   resetToCheckpoint: () => void;
   resetToApiResponse: () => void;
+  removeInvalidSegment: (index: number) => void;
+
   clear: () => void;
   
   // Data fetching
@@ -46,6 +48,11 @@ export const useInvalidStore = create<InvalidStore>((set, get) => ({
     editing: [...state.api_response], 
     save_checkpoint: [...state.api_response] 
   })),
+  removeInvalidSegment: (index) => set((state) => {
+    const updatedEditing = [...state.editing];
+    updatedEditing.splice(index, 1);
+    return { editing: updatedEditing };
+  }),
   clear: () => set({ 
     api_response: [], 
     save_checkpoint: [], 
