@@ -5,7 +5,7 @@ const TestScreen: React.FC = () => {
   
     const handleApiCall = async () => {
       const jobId = "d22c4d7c-f4e8-4c13-b2a6-805cd1c1696f";
-      const response = await getStatus(jobId);
+      const response = await getInvalidSegments(jobId);
       console.log(response);
 
     }

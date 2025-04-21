@@ -245,7 +245,7 @@ const VideoEditor = () => {
                   value="transcript-editor"
                   className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm"
                 >
-                  <TranscriptEditor jobId={jobId} />
+                  <TranscriptEditor />
                 </TabsContent>
                 </Tabs>
             </div>

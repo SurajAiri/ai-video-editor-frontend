@@ -1,7 +1,8 @@
-// /src/stores/InvalidStore.ts
 import { getInvalidSegments } from '@/apis/api';
 import { InvalidModel } from '@/types/InvalidModel';
 import { create } from 'zustand';
+import { processFillerAndLongPauses, processInvalidSegments } from '@/utils/processInvalidSegments'; 
+import useTranscriptStore from '@/stores/TranscriptStore'; 
 
 interface InvalidStore {
   api_response: InvalidModel[];
@@ -78,10 +79,18 @@ export const useInvalidStore = create<InvalidStore>((set, get) => ({
       const response = await getInvalidSegments(jobId);
       
       if (response.status === 'success' && response.data && response.data.invalids) {
+        // Get transcript from the transcript store
+        const { transcript } = useTranscriptStore.getState();
+        
+        // Process invalid segments to add indices
+        let processedInvalids = processInvalidSegments(response.data.invalids, transcript);
+        
+        processedInvalids = processFillerAndLongPauses(transcript, processedInvalids);
+        
         set({
-          api_response: response.data.invalids,
-          save_checkpoint: response.data.invalids,
-          editing: response.data.invalids,
+          api_response: processedInvalids,
+          save_checkpoint: processedInvalids,
+          editing: processedInvalids,
           jobId: response.job_id,
           isLoading: false
         });

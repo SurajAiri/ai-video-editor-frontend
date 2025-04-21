@@ -9,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Keyboard } from "lucide-react";
+import { Keyboard, Save } from "lucide-react";
 import useTranscriptStore from '@/stores/TranscriptStore';
 import { useInvalidStore } from '@/stores/InvalidStore';
 import { TranscriptWordModel } from '@/types/TranscriptWordModel';
@@ -230,18 +230,23 @@ const TranscriptEditor: React.FC = () => {
   };
   
   return (
-    <div className="container mx-auto p-4" ref={containerRef}>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Transcript Editor</CardTitle>
+    <div className="w-full max-w-6xl mx-auto" ref={containerRef}>
+      <Card className="border border-blue-100 shadow-md bg-white overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+          <CardTitle className="text-lg font-semibold text-blue-800 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+              <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"></path>
+            </svg>
+            Transcript Editor
+          </CardTitle>
           
           <div className="flex items-center gap-2">
-            <div className="flex items-center text-xs text-muted-foreground">
-              <span className="mr-1">Shortcuts:</span>
-              <Badge variant="outline" className="mr-1">R</Badge>
-              <Badge variant="outline" className="mr-1">F</Badge>
-              <Badge variant="outline" className="mr-1">P</Badge>
-              <Badge variant="outline">Esc</Badge>
+            <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+              <span className="mr-1 font-medium">Shortcuts:</span>
+              <Badge variant="outline" className="mr-1 bg-white border-blue-200">R</Badge>
+              <Badge variant="outline" className="mr-1 bg-white border-blue-200">F</Badge>
+              <Badge variant="outline" className="mr-1 bg-white border-blue-200">P</Badge>
+              <Badge variant="outline" className="bg-white border-blue-200">Esc</Badge>
             </div>
             
             <TooltipProvider>
@@ -251,12 +256,13 @@ const TranscriptEditor: React.FC = () => {
                     variant="ghost" 
                     size="sm"
                     onClick={toggleShortcutHelp}
+                    className="text-blue-600 hover:bg-blue-50"
                   >
                     <Keyboard className="h-4 w-4 mr-1" />
                     Shortcuts
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="left">
+                <TooltipContent side="left" className="bg-blue-800 text-white">
                   Press ? to show/hide shortcut help
                 </TooltipContent>
               </Tooltip>
@@ -264,13 +270,17 @@ const TranscriptEditor: React.FC = () => {
           </div>
         </CardHeader>
         
-        <CardContent>
-          <ScrollArea className="h-60 mb-4">
-            <div className="space-y-2 p-2">
+        <CardContent className="p-4">
+          <ScrollArea className="h-60 mb-4 border border-blue-100 rounded-lg">
+            <div className="space-y-2 p-3">
               {wordGroups.map((group, groupIndex) => (
-                <div key={groupIndex} className="flex flex-wrap gap-x-1 mb-2 border-b pb-1">
+                <div key={groupIndex} className="flex flex-wrap gap-x-1 mb-3 border-b border-blue-100 pb-2">
                   {/* Group timestamp indicator */}
-                  <div className="w-full text-xs text-muted-foreground mb-1">
+                  <div className="w-full text-xs text-blue-500 mb-1 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
                     {group.start_time.toFixed(1)}s - {group.end_time.toFixed(1)}s
                   </div>
                   
@@ -294,7 +304,7 @@ const TranscriptEditor: React.FC = () => {
                       if (isSelected) {
                         // Clear, distinctive selection styling that overrides other styles
                         bgClass = "bg-blue-500 hover:bg-blue-600 text-white";
-                        borderClass = "";
+                        borderClass = "shadow-sm";
                       } else if (isInvalid) {
                         // Different invalid types get different border and background styles
                         switch(invalidType) {
@@ -319,7 +329,7 @@ const TranscriptEditor: React.FC = () => {
                       return (
                         <span
                           key={wordIndex}
-                          className={`inline-block px-1 py-0.5 rounded cursor-pointer transition-colors ${bgClass} ${borderClass}`}
+                          className={`inline-block px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${bgClass} ${borderClass}`}
                           onClick={() => handleWordClick(globalIndex)}
                         >
                           {wordObj.word}
@@ -333,23 +343,29 @@ const TranscriptEditor: React.FC = () => {
           </ScrollArea>
           
           {selectedRange && (
-            <div className="border rounded-md p-3 mb-4">
-              <div className="font-medium mb-2">Selected Range:</div>
-              <div className="text-sm mb-2">
-                Time: {selectedRange.start_time.toFixed(2)}s - {selectedRange.end_time.toFixed(2)}s
+            <div className="border border-blue-100 rounded-lg p-4 mb-4 bg-blue-50">
+              <div className="font-medium text-blue-800 mb-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                </svg>
+                Selected Range:
               </div>
-              <div className="text-sm mb-3">
-                Text: {transcript.slice(selectedRange.startIndex, selectedRange.endIndex + 1).map(item => item.word).join(' ')}
+              <div className="text-sm mb-2 text-blue-700">
+                <span className="font-medium">Time:</span> {selectedRange.start_time.toFixed(2)}s - {selectedRange.end_time.toFixed(2)}s
+              </div>
+              <div className="text-sm mb-3 text-blue-700">
+                <span className="font-medium">Text:</span> {transcript.slice(selectedRange.startIndex, selectedRange.endIndex + 1).map(item => item.word).join(' ')}
               </div>
               <div className="flex gap-2 flex-wrap">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="sm" onClick={() => addInvalidSegment("repetition")} className="bg-red-500 hover:bg-red-600">
+                      <Button size="sm" onClick={() => addInvalidSegment("repetition")} className="bg-red-500 hover:bg-red-600 text-white shadow-sm">
                         Mark as Repetition
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom">
+                    <TooltipContent side="bottom" className="bg-red-800 text-white">
                       Shortcut: R
                     </TooltipContent>
                   </Tooltip>
@@ -358,11 +374,11 @@ const TranscriptEditor: React.FC = () => {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="sm" onClick={() => addInvalidSegment("filler_words")} className="bg-yellow-500 hover:bg-yellow-600">
+                      <Button size="sm" onClick={() => addInvalidSegment("filler_words")} className="bg-yellow-500 hover:bg-yellow-600 text-white shadow-sm">
                         Mark as Filler Words
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom">
+                    <TooltipContent side="bottom" className="bg-yellow-800 text-white">
                       Shortcut: F
                     </TooltipContent>
                   </Tooltip>
@@ -371,11 +387,11 @@ const TranscriptEditor: React.FC = () => {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="sm" onClick={() => addInvalidSegment("long_pause")} className="bg-blue-500 hover:bg-blue-600">
+                      <Button size="sm" onClick={() => addInvalidSegment("long_pause")} className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm">
                         Mark as Long Pause
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom">
+                    <TooltipContent side="bottom" className="bg-blue-800 text-white">
                       Shortcut: P
                     </TooltipContent>
                   </Tooltip>
@@ -384,11 +400,11 @@ const TranscriptEditor: React.FC = () => {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedRange(null)}>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedRange(null)} className="border-blue-200 text-blue-600 hover:bg-blue-50">
                         Clear Selection
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom">
+                    <TooltipContent side="bottom" className="bg-blue-800 text-white">
                       Shortcut: Esc
                     </TooltipContent>
                   </Tooltip>
@@ -401,38 +417,41 @@ const TranscriptEditor: React.FC = () => {
         {/* Keyboard shortcut help modal */}
         {showShortcutHelp && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={toggleShortcutHelp}>
-            <Card className="w-96" onClick={e => e.stopPropagation()}>
-              <CardHeader>
-                <CardTitle>Keyboard Shortcuts</CardTitle>
+            <Card className="w-96 border-blue-200 shadow-lg" onClick={e => e.stopPropagation()}>
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+                <CardTitle className="text-blue-800 flex items-center">
+                  <Keyboard className="h-5 w-5 mr-2" />
+                  Keyboard Shortcuts
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="font-medium">r</span>
-                    <span>Mark as Repetition</span>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center border-b border-blue-50 pb-2">
+                    <Badge className="bg-blue-100 text-blue-800 font-mono">r</Badge>
+                    <span className="text-gray-700">Mark as Repetition</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">f</span>
-                    <span>Mark as Filler Words</span>
+                  <div className="flex justify-between items-center border-b border-blue-50 pb-2">
+                    <Badge className="bg-blue-100 text-blue-800 font-mono">f</Badge>
+                    <span className="text-gray-700">Mark as Filler Words</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">p</span>
-                    <span>Mark as Long Pause</span>
+                  <div className="flex justify-between items-center border-b border-blue-50 pb-2">
+                    <Badge className="bg-blue-100 text-blue-800 font-mono">p</Badge>
+                    <span className="text-gray-700">Mark as Long Pause</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Esc</span>
-                    <span>Clear Selection</span>
+                  <div className="flex justify-between items-center border-b border-blue-50 pb-2">
+                    <Badge className="bg-blue-100 text-blue-800 font-mono">Esc</Badge>
+                    <span className="text-gray-700">Clear Selection</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">?</span>
-                    <span>Show/Hide Shortcuts</span>
+                  <div className="flex justify-between items-center">
+                    <Badge className="bg-blue-100 text-blue-800 font-mono">?</Badge>
+                    <span className="text-gray-700">Show/Hide Shortcuts</span>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="bg-gray-50 p-3 border-t border-blue-100">
                 <Button 
                   variant="outline" 
-                  className="w-full" 
+                  className="w-full border-blue-200 text-blue-600 hover:bg-blue-50" 
                   onClick={toggleShortcutHelp}
                 >
                   Close
@@ -442,14 +461,15 @@ const TranscriptEditor: React.FC = () => {
           </div>
         )}
         
-        <CardFooter>
+        <CardFooter className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100 p-4">
           <Button 
             onClick={() => {
               // Here you would typically save changes to your backend
               console.log("Saving transcript changes", invalidSegments);
             }}
-            className="w-full"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-sm"
           >
+            <Save className="h-4 w-4 mr-2" />
             Save Changes
           </Button>
         </CardFooter>
