@@ -214,8 +214,7 @@ const VideoEditor = () => {
         {/* Content when data is successfully loaded */}
         {!isLoading &&
           !errors.length &&
-          transcript.length > 0 &&
-          invalidSegments.length > 0 && (
+          transcript.length > 0 && (
             <div className="bg-white rounded-xl shadow-md p-6 border border-blue-100">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6 bg-blue-50 p-1 rounded-lg">

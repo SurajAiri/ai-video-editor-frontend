@@ -1,17 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Keyboard } from "lucide-react";
 import { 
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Keyboard } from "lucide-react";
 import useTranscriptStore from '@/stores/TranscriptStore';
 import { useInvalidStore } from '@/stores/InvalidStore';
+import { TranscriptWordModel } from '@/types/TranscriptWordModel';
+import { InvalidModel } from '@/types/InvalidModel';
+
+interface WordGroup {
+  words: TranscriptWordModel[];
+  startIndex: number;
+  endIndex: number;
+  start_time: number;
+  end_time: number;
+}
 
 interface SelectedRange {
   startIndex: number;
@@ -20,37 +30,22 @@ interface SelectedRange {
   end_time: number;
 }
 
-interface WordGroup {
-  words: any[];
-  startIndex: number;
-  endIndex: number;
-  start_time: number;
-  end_time: number;
-}
-
-interface TranscriptEditorProps {
-  jobId: string | undefined;
-}
-
-const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
-  // Get transcript data from store
-  const { transcript, isLoading: transcriptLoading } = useTranscriptStore();
+const TranscriptEditor: React.FC = () => {
+  // Get data from stores
+  const { transcript } = useTranscriptStore();
+  const { editing: invalidSegments, setEditing } = useInvalidStore();
   
-  // Get invalid segments from store
-  const { editing: invalidSegments, addInvalidSegment: storeAddInvalidSegment } = useInvalidStore();
-  
-  // Local component state
-  const [selectedRange, setSelectedRange] = useState<SelectedRange | null>(null);
+  // Local state
   const [wordGroups, setWordGroups] = useState<WordGroup[]>([]);
+  const [selectedRange, setSelectedRange] = useState<SelectedRange | null>(null);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Group words into sensible chunks when transcript changes
+  // Group words with continuous timestamps
   useEffect(() => {
     if (!transcript.length) return;
     
-    // Group words with continuous timestamps
     const groups: WordGroup[] = [];
     let currentGroup: WordGroup | null = null;
     
@@ -66,10 +61,10 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
         };
       } else {
         // Check if this word is continuous with the current group
-        // Consider words continuous if the gap is less than 0.3 seconds
+        // We're considering words continuous if the gap is less than 0.2 seconds
         const timeDiff = wordObj.start - currentGroup.end_time;
         
-        if (timeDiff <= 0.3) {
+        if (timeDiff <= 0.2) {
           // Add to current group
           currentGroup.words.push(wordObj);
           currentGroup.endIndex = index;
@@ -109,15 +104,19 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
       
       switch (e.key) {
         case 'r':
+        case 'z':
           addInvalidSegment("repetition");
           break;
         case 'f':
+        case 'x':
           addInvalidSegment("filler_words");
           break;
         case 'p':
+        case 'c':
           addInvalidSegment("long_pause");
           break;
         case 'Escape':
+        case 'v':
           setSelectedRange(null);
           break;
         case '?':
@@ -162,40 +161,39 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
     }
   };
   
-  // Check if word is part of an invalid segment
+  // Check if word is part of an invalid segment - fixed the extra word selection bug
   const isWordInInvalidSegment = (wordIndex: number) => {
     return invalidSegments.some(segment => {
       const segmentStartTime = segment.start_time;
       const segmentEndTime = segment.end_time;
-      
-      if (wordIndex >= transcript.length) return false;
-      
       const wordStartTime = transcript[wordIndex].start;
       const wordEndTime = transcript[wordIndex].end;
       
+      // More precise check to prevent extra words from being highlighted
       return (
-        (wordStartTime >= segmentStartTime && wordStartTime <= segmentEndTime) ||
-        (wordEndTime >= segmentStartTime && wordEndTime <= segmentEndTime) ||
-        (segmentStartTime >= wordStartTime && segmentStartTime <= wordEndTime)
+        // Word starts within segment
+        (wordStartTime >= segmentStartTime && wordStartTime < segmentEndTime) ||
+        // Word ends within segment
+        (wordEndTime > segmentStartTime && wordEndTime <= segmentEndTime) ||
+        // Word completely contains segment
+        (wordStartTime <= segmentStartTime && wordEndTime >= segmentEndTime)
       );
     });
   };
   
-  // Get the invalid segment type for a word
+  // Get the invalid segment type for a word - fixed to match the isWordInInvalidSegment logic
   const getInvalidSegmentTypeForWord = (wordIndex: number) => {
     for (const segment of invalidSegments) {
       const segmentStartTime = segment.start_time;
       const segmentEndTime = segment.end_time;
-      
-      if (wordIndex >= transcript.length) return null;
-      
       const wordStartTime = transcript[wordIndex].start;
       const wordEndTime = transcript[wordIndex].end;
       
+      // Use the same exact logic as isWordInInvalidSegment for consistency
       if (
-        (wordStartTime >= segmentStartTime && wordStartTime <= segmentEndTime) ||
-        (wordEndTime >= segmentStartTime && wordEndTime <= segmentEndTime) ||
-        (segmentStartTime >= wordStartTime && segmentStartTime <= wordEndTime)
+        (wordStartTime >= segmentStartTime && wordStartTime < segmentEndTime) ||
+        (wordEndTime > segmentStartTime && wordEndTime <= segmentEndTime) ||
+        (wordStartTime <= segmentStartTime && wordEndTime >= segmentEndTime)
       ) {
         return segment.type;
       }
@@ -204,21 +202,26 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
   };
   
   // Add new invalid segment from transcript selection
-  const addInvalidSegment = (type: string) => {
-    if (!selectedRange || !jobId) return;
-    
-    const newInvalidSegment = {
-      start_time: selectedRange.start_time.toString(),
-      end_time: selectedRange.end_time.toString(),
-      type,
-      is_entire: false
-    };
-    
-    // Call the store action to add this invalid segment
-    storeAddInvalidSegment(newInvalidSegment, jobId);
-    
-    // Clear the selection after adding
-    setSelectedRange(null);
+  const addInvalidSegment = (type: 'filler_words' | 'repetition' | 'long_pause') => {
+    if (selectedRange) {
+      const selectedText = transcript
+        .slice(selectedRange.startIndex, selectedRange.endIndex + 1)
+        .map(item => item.word)
+        .join(' ');
+      
+      const newSegment: InvalidModel = {
+        start_time: selectedRange.start_time,
+        end_time: selectedRange.end_time,
+        type,
+        is_entire: false,
+        text: selectedText,
+        startIndex: selectedRange.startIndex,
+        endIndex: selectedRange.endIndex
+      };
+      
+      setEditing([...invalidSegments, newSegment]);
+      setSelectedRange(null);
+    }
   };
   
   // Toggle keyboard shortcuts help
@@ -227,19 +230,40 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
   };
   
   return (
-    <div ref={containerRef}>
+    <div className="container mx-auto p-4" ref={containerRef}>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Transcript Editor</CardTitle>
           
-          <div className="flex items-center text-xs text-muted-foreground">
-            <span className="mr-1">Shortcuts:</span>
-            <Badge variant="outline" className="mr-1">R</Badge>
-            <Badge variant="outline" className="mr-1">F</Badge>
-            <Badge variant="outline" className="mr-1">P</Badge>
-            <Badge variant="outline">Esc</Badge>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center text-xs text-muted-foreground">
+              <span className="mr-1">Shortcuts:</span>
+              <Badge variant="outline" className="mr-1">R</Badge>
+              <Badge variant="outline" className="mr-1">F</Badge>
+              <Badge variant="outline" className="mr-1">P</Badge>
+              <Badge variant="outline">Esc</Badge>
+            </div>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={toggleShortcutHelp}
+                  >
+                    <Keyboard className="h-4 w-4 mr-1" />
+                    Shortcuts
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  Press ? to show/hide shortcut help
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </CardHeader>
+        
         <CardContent>
           <ScrollArea className="h-60 mb-4">
             <div className="space-y-2 p-2">
@@ -263,32 +287,39 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
                       const invalidType = getInvalidSegmentTypeForWord(globalIndex);
                       
                       // Determine styling based on selection and invalid status
-                      let classes = "inline-block px-1 py-0.5 rounded cursor-pointer transition-colors";
+                      // Selection always takes visual priority over invalid status
+                      let bgClass = "bg-white hover:bg-gray-100 text-gray-800";
+                      let borderClass = "";
                       
                       if (isSelected) {
-                        classes += " bg-primary text-primary-foreground";
+                        // Clear, distinctive selection styling that overrides other styles
+                        bgClass = "bg-blue-500 hover:bg-blue-600 text-white";
+                        borderClass = "";
                       } else if (isInvalid) {
+                        // Different invalid types get different border and background styles
                         switch(invalidType) {
                           case "repetition":
-                            classes += " bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-200";
+                            bgClass = "bg-red-50 hover:bg-red-100 text-red-800";
+                            borderClass = "border border-red-200";
                             break;
-                          case "filler_word":
-                            classes += " bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200";
+                          case "filler_words":
+                            bgClass = "bg-yellow-50 hover:bg-yellow-100 text-yellow-800";
+                            borderClass = "border border-yellow-200";
                             break;
-                          case "long_pauses":
-                            classes += " bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
+                          case "long_pause":
+                            bgClass = "bg-blue-50 hover:bg-blue-100 text-blue-800";
+                            borderClass = "border border-blue-200";
                             break;
                           default:
-                            classes += " bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200";
+                            bgClass = "bg-gray-50 hover:bg-gray-100 text-gray-800";
+                            borderClass = "border border-gray-200";
                         }
-                      } else {
-                        classes += " hover:bg-accent";
                       }
                       
                       return (
                         <span
                           key={wordIndex}
-                          className={classes}
+                          className={`inline-block px-1 py-0.5 rounded cursor-pointer transition-colors ${bgClass} ${borderClass}`}
                           onClick={() => handleWordClick(globalIndex)}
                         >
                           {wordObj.word}
@@ -302,7 +333,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
           </ScrollArea>
           
           {selectedRange && (
-            <div className="border rounded-md p-3 mb-4 bg-accent/50">
+            <div className="border rounded-md p-3 mb-4">
               <div className="font-medium mb-2">Selected Range:</div>
               <div className="text-sm mb-2">
                 Time: {selectedRange.start_time.toFixed(2)}s - {selectedRange.end_time.toFixed(2)}s
@@ -314,7 +345,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="destructive" size="sm" onClick={() => addInvalidSegment("repetition")}>
+                      <Button size="sm" onClick={() => addInvalidSegment("repetition")} className="bg-red-500 hover:bg-red-600">
                         Mark as Repetition
                       </Button>
                     </TooltipTrigger>
@@ -327,7 +358,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="secondary" size="sm" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={() => addInvalidSegment("filler_word")}>
+                      <Button size="sm" onClick={() => addInvalidSegment("filler_words")} className="bg-yellow-500 hover:bg-yellow-600">
                         Mark as Filler Words
                       </Button>
                     </TooltipTrigger>
@@ -340,7 +371,7 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="secondary" size="sm" className="bg-blue-500 hover:bg-blue-600 text-white" onClick={() => addInvalidSegment("long_pauses")}>
+                      <Button size="sm" onClick={() => addInvalidSegment("long_pause")} className="bg-blue-500 hover:bg-blue-600">
                         Mark as Long Pause
                       </Button>
                     </TooltipTrigger>
@@ -366,9 +397,53 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
             </div>
           )}
         </CardContent>
+        
+        {/* Keyboard shortcut help modal */}
+        {showShortcutHelp && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={toggleShortcutHelp}>
+            <Card className="w-96" onClick={e => e.stopPropagation()}>
+              <CardHeader>
+                <CardTitle>Keyboard Shortcuts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="font-medium">r</span>
+                    <span>Mark as Repetition</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">f</span>
+                    <span>Mark as Filler Words</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">p</span>
+                    <span>Mark as Long Pause</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Esc</span>
+                    <span>Clear Selection</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">?</span>
+                    <span>Show/Hide Shortcuts</span>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={toggleShortcutHelp}
+                >
+                  Close
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )}
+        
         <CardFooter>
           <Button 
-            variant="default"
             onClick={() => {
               // Here you would typically save changes to your backend
               console.log("Saving transcript changes", invalidSegments);
@@ -379,52 +454,6 @@ const TranscriptEditor: React.FC<TranscriptEditorProps> = ({ jobId }) => {
           </Button>
         </CardFooter>
       </Card>
-      
-      {/* Keyboard shortcut help modal */}
-      {showShortcutHelp && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={toggleShortcutHelp}>
-          <Card className="w-96 border-accent-foreground shadow-lg" onClick={e => e.stopPropagation()}>
-            <CardHeader className="bg-muted/50">
-              <CardTitle className="flex items-center">
-                <Keyboard className="mr-2 h-4 w-4" /> Keyboard Shortcuts
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center py-1 border-b">
-                  <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">r</Badge>
-                  <span>Mark as Repetition</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b">
-                  <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">f</Badge>
-                  <span>Mark as Filler Words</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b">
-                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">p</Badge>
-                  <span>Mark as Long Pause</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b">
-                  <Badge>Esc</Badge>
-                  <span>Clear Selection</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <Badge>?</Badge>
-                  <span>Show/Hide Shortcuts</span>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={toggleShortcutHelp}
-              >
-                Close
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      )}
     </div>
   );
 };

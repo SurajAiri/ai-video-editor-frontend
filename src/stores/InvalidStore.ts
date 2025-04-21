@@ -20,7 +20,7 @@ interface InvalidStore {
   resetToCheckpoint: () => void;
   resetToApiResponse: () => void;
   removeInvalidSegment: (index: number) => void;
-
+  addInvalidSegment: (newSegment: InvalidModel) => void;
   clear: () => void;
   
   // Data fetching
@@ -41,34 +41,36 @@ export const useInvalidStore = create<InvalidStore>((set, get) => ({
   setJobId: (jobId) => set({ jobId }),
   
   // Actions
-  resetToCheckpoint: () => set((state) => ({ 
-    editing: [...state.save_checkpoint] 
+  resetToCheckpoint: () => set((state) => ({
+    editing: [...state.save_checkpoint]
   })),
-  resetToApiResponse: () => set((state) => ({ 
-    editing: [...state.api_response], 
-    save_checkpoint: [...state.api_response] 
+  resetToApiResponse: () => set((state) => ({
+    editing: [...state.api_response],
+    save_checkpoint: [...state.api_response]
   })),
   removeInvalidSegment: (index) => set((state) => {
     const updatedEditing = [...state.editing];
     updatedEditing.splice(index, 1);
     return { editing: updatedEditing };
   }),
-  clear: () => set({ 
-    api_response: [], 
-    save_checkpoint: [], 
+  addInvalidSegment: (newSegment) => set((state) => ({
+    editing: [...state.editing, newSegment]
+  })),
+  clear: () => set({
+    api_response: [],
+    save_checkpoint: [],
     editing: [],
-    error: null 
+    error: null
   }),
   
   // Data fetching function
   fetchInvalidSegments: async (jobId: string) => {
     if (!jobId) {
-        set({ error: 'No job ID provided' });
-        return;
+      set({ error: 'No job ID provided' });
+      return;
     }
-
-    if(jobId === get().jobId) return;
     
+    if(jobId === get().jobId) return;
     
     set({ isLoading: true, error: null });
     
@@ -76,7 +78,7 @@ export const useInvalidStore = create<InvalidStore>((set, get) => ({
       const response = await getInvalidSegments(jobId);
       
       if (response.status === 'success' && response.data && response.data.invalids) {
-        set({ 
+        set({
           api_response: response.data.invalids,
           save_checkpoint: response.data.invalids,
           editing: response.data.invalids,
@@ -84,15 +86,15 @@ export const useInvalidStore = create<InvalidStore>((set, get) => ({
           isLoading: false
         });
       } else {
-        set({ 
-          error: 'Invalid response format', 
-          isLoading: false 
+        set({
+          error: 'Invalid response format',
+          isLoading: false
         });
       }
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Failed to fetch invalid segments',
-        isLoading: false 
+        isLoading: false
       });
     }
   }
