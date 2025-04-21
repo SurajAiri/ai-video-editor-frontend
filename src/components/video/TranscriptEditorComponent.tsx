@@ -9,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Keyboard, Save } from "lucide-react";
+import { Keyboard, Save, Trash2, Edit2 } from "lucide-react";
 import useTranscriptStore from '@/stores/TranscriptStore';
 import { useInvalidStore } from '@/stores/InvalidStore';
 import { TranscriptWordModel } from '@/types/TranscriptWordModel';
@@ -33,12 +33,13 @@ interface SelectedRange {
 const TranscriptEditor: React.FC = () => {
   // Get data from stores
   const { transcript } = useTranscriptStore();
-  const { editing: invalidSegments, setEditing } = useInvalidStore();
+  const { editing: invalidSegments, setEditing, removeInvalidSegment } = useInvalidStore();
   
   // Local state
   const [wordGroups, setWordGroups] = useState<WordGroup[]>([]);
   const [selectedRange, setSelectedRange] = useState<SelectedRange | null>(null);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [selectedInvalidIndex, setSelectedInvalidIndex] = useState<number | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -98,7 +99,7 @@ const TranscriptEditor: React.FC = () => {
       if (!selectedRange) return;
       
       // Prevent default for our shortcut keys
-      if (['r', 'f', 'p', 'Escape'].includes(e.key)) {
+      if (['r', 'f', 'p', 'Escape', 'd'].includes(e.key)) {
         e.preventDefault();
       }
       
@@ -115,9 +116,16 @@ const TranscriptEditor: React.FC = () => {
         case 'c':
           addInvalidSegment("long_pause");
           break;
+        case 'd':
+          // Delete the selected invalid segment
+          if (selectedInvalidIndex !== null) {
+            handleRemoveInvalidSegment();
+          }
+          break;
         case 'Escape':
         case 'v':
           setSelectedRange(null);
+          setSelectedInvalidIndex(null);
           break;
         case '?':
           setShowShortcutHelp(prev => !prev);
@@ -132,36 +140,9 @@ const TranscriptEditor: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedRange]);
+  }, [selectedRange, selectedInvalidIndex]);
   
-  // Word selection in transcript (individual word level)
-  const handleWordClick = (globalIndex: number) => {
-    if (!selectedRange) {
-      // Start new selection
-      setSelectedRange({
-        startIndex: globalIndex,
-        endIndex: globalIndex,
-        start_time: transcript[globalIndex].start,
-        end_time: transcript[globalIndex].end
-      });
-    } else if (selectedRange.startIndex === globalIndex && selectedRange.endIndex === globalIndex) {
-      // Deselect if clicking on a single word selection
-      setSelectedRange(null);
-    } else {
-      // Expand or adjust selection
-      const newStartIndex = Math.min(selectedRange.startIndex, globalIndex);
-      const newEndIndex = Math.max(selectedRange.startIndex, globalIndex);
-      
-      setSelectedRange({
-        startIndex: newStartIndex,
-        endIndex: newEndIndex,
-        start_time: transcript[newStartIndex].start,
-        end_time: transcript[newEndIndex].end
-      });
-    }
-  };
-  
-  // Check if word is part of an invalid segment - fixed the extra word selection bug
+  // Check if word is part of an invalid segment
   const isWordInInvalidSegment = (wordIndex: number) => {
     return invalidSegments.some(segment => {
       const segmentStartTime = segment.start_time;
@@ -181,9 +162,10 @@ const TranscriptEditor: React.FC = () => {
     });
   };
   
-  // Get the invalid segment type for a word - fixed to match the isWordInInvalidSegment logic
-  const getInvalidSegmentTypeForWord = (wordIndex: number) => {
-    for (const segment of invalidSegments) {
+  // Get the invalid segment type and index for a word
+  const getInvalidSegmentInfoForWord = (wordIndex: number) => {
+    for (let i = 0; i < invalidSegments.length; i++) {
+      const segment = invalidSegments[i];
       const segmentStartTime = segment.start_time;
       const segmentEndTime = segment.end_time;
       const wordStartTime = transcript[wordIndex].start;
@@ -195,10 +177,93 @@ const TranscriptEditor: React.FC = () => {
         (wordEndTime > segmentStartTime && wordEndTime <= segmentEndTime) ||
         (wordStartTime <= segmentStartTime && wordEndTime >= segmentEndTime)
       ) {
-        return segment.type;
+        return { type: segment.type, index: i };
       }
     }
-    return null;
+    return { type: null, index: null };
+  };
+  
+  // Find all word indices in an invalid segment
+  const findWordIndicesInInvalidSegment = (segmentIndex: number) => {
+    const segment = invalidSegments[segmentIndex];
+    if (!segment) return { startIndex: -1, endIndex: -1 };
+    
+    const segmentStartTime = segment.start_time;
+    const segmentEndTime = segment.end_time;
+    
+    let startIndex = -1;
+    let endIndex = -1;
+    
+    // Find the first and last word in the segment
+    for (let i = 0; i < transcript.length; i++) {
+      const wordStartTime = transcript[i].start;
+      const wordEndTime = transcript[i].end;
+      
+      // Check if word is in segment
+      const isInSegment = (
+        (wordStartTime >= segmentStartTime && wordStartTime < segmentEndTime) ||
+        (wordEndTime > segmentStartTime && wordEndTime <= segmentEndTime) ||
+        (wordStartTime <= segmentStartTime && wordEndTime >= segmentEndTime)
+      );
+      
+      if (isInSegment) {
+        if (startIndex === -1) startIndex = i;
+        endIndex = i;
+      } else if (endIndex !== -1) {
+        // We've found the end of the segment
+        break;
+      }
+    }
+    
+    return { startIndex, endIndex };
+  };
+  
+  // Word selection in transcript (individual word level)
+  const handleWordClick = (globalIndex: number) => {
+    // Check if the word is part of an invalid segment
+    const { index: invalidIndex } = getInvalidSegmentInfoForWord(globalIndex);
+    
+    if (invalidIndex !== null) {
+      // Word is part of an invalid segment, select entire segment
+      const { startIndex, endIndex } = findWordIndicesInInvalidSegment(invalidIndex);
+      
+      if (startIndex !== -1 && endIndex !== -1) {
+        setSelectedRange({
+          startIndex,
+          endIndex,
+          start_time: transcript[startIndex].start,
+          end_time: transcript[endIndex].end
+        });
+        setSelectedInvalidIndex(invalidIndex);
+      }
+    } else {
+      // Normal word selection
+      setSelectedInvalidIndex(null);
+      
+      if (!selectedRange) {
+        // Start new selection
+        setSelectedRange({
+          startIndex: globalIndex,
+          endIndex: globalIndex,
+          start_time: transcript[globalIndex].start,
+          end_time: transcript[globalIndex].end
+        });
+      } else if (selectedRange.startIndex === globalIndex && selectedRange.endIndex === globalIndex) {
+        // Deselect if clicking on a single word selection
+        setSelectedRange(null);
+      } else {
+        // Expand or adjust selection
+        const newStartIndex = Math.min(selectedRange.startIndex, globalIndex);
+        const newEndIndex = Math.max(selectedRange.startIndex, globalIndex);
+        
+        setSelectedRange({
+          startIndex: newStartIndex,
+          endIndex: newEndIndex,
+          start_time: transcript[newStartIndex].start,
+          end_time: transcript[newEndIndex].end
+        });
+      }
+    }
   };
   
   // Add new invalid segment from transcript selection
@@ -219,8 +284,27 @@ const TranscriptEditor: React.FC = () => {
         endIndex: selectedRange.endIndex
       };
       
-      setEditing([...invalidSegments, newSegment]);
+      if (selectedInvalidIndex !== null) {
+        // Update existing invalid segment
+        const updatedSegments = [...invalidSegments];
+        updatedSegments[selectedInvalidIndex] = newSegment;
+        setEditing(updatedSegments);
+      } else {
+        // Add new invalid segment
+        setEditing([...invalidSegments, newSegment]);
+      }
+      
       setSelectedRange(null);
+      setSelectedInvalidIndex(null);
+    }
+  };
+  
+  // Handle removing an invalid segment
+  const handleRemoveInvalidSegment = () => {
+    if (selectedInvalidIndex !== null) {
+      removeInvalidSegment(selectedInvalidIndex);
+      setSelectedRange(null);
+      setSelectedInvalidIndex(null);
     }
   };
   
@@ -246,6 +330,7 @@ const TranscriptEditor: React.FC = () => {
               <Badge variant="outline" className="mr-1 bg-white border-blue-200">R</Badge>
               <Badge variant="outline" className="mr-1 bg-white border-blue-200">F</Badge>
               <Badge variant="outline" className="mr-1 bg-white border-blue-200">P</Badge>
+              <Badge variant="outline" className="mr-1 bg-white border-blue-200">D</Badge>
               <Badge variant="outline" className="bg-white border-blue-200">Esc</Badge>
             </div>
             
@@ -293,8 +378,8 @@ const TranscriptEditor: React.FC = () => {
                         globalIndex >= selectedRange.startIndex && 
                         globalIndex <= selectedRange.endIndex;
                       
-                      const isInvalid = isWordInInvalidSegment(globalIndex);
-                      const invalidType = getInvalidSegmentTypeForWord(globalIndex);
+                      const { type: invalidType, index: invalidIndex } = getInvalidSegmentInfoForWord(globalIndex);
+                      const isInvalid = invalidType !== null;
                       
                       // Determine styling based on selection and invalid status
                       // Selection always takes visual priority over invalid status
@@ -349,7 +434,7 @@ const TranscriptEditor: React.FC = () => {
                   <path d="M12 20h9"></path>
                   <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
                 </svg>
-                Selected Range:
+                {selectedInvalidIndex !== null ? 'Edit Invalid Segment:' : 'Selected Range:'}
               </div>
               <div className="text-sm mb-2 text-blue-700">
                 <span className="font-medium">Time:</span> {selectedRange.start_time.toFixed(2)}s - {selectedRange.end_time.toFixed(2)}s
@@ -357,59 +442,140 @@ const TranscriptEditor: React.FC = () => {
               <div className="text-sm mb-3 text-blue-700">
                 <span className="font-medium">Text:</span> {transcript.slice(selectedRange.startIndex, selectedRange.endIndex + 1).map(item => item.word).join(' ')}
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="sm" onClick={() => addInvalidSegment("repetition")} className="bg-red-500 hover:bg-red-600 text-white shadow-sm">
-                        Mark as Repetition
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-red-800 text-white">
-                      Shortcut: R
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="sm" onClick={() => addInvalidSegment("filler_words")} className="bg-yellow-500 hover:bg-yellow-600 text-white shadow-sm">
-                        Mark as Filler Words
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-yellow-800 text-white">
-                      Shortcut: F
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="sm" onClick={() => addInvalidSegment("long_pause")} className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm">
-                        Mark as Long Pause
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-blue-800 text-white">
-                      Shortcut: P
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedRange(null)} className="border-blue-200 text-blue-600 hover:bg-blue-50">
-                        Clear Selection
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-blue-800 text-white">
-                      Shortcut: Esc
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+              
+              {selectedInvalidIndex !== null ? (
+                <div className="flex gap-2 flex-wrap">
+                  <div className="w-full mb-2 text-sm text-blue-700">
+                    <span className="font-medium">Current Type:</span> {invalidSegments[selectedInvalidIndex].type.replace('_', ' ')}
+                  </div>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" onClick={() => addInvalidSegment("repetition")} className="bg-red-500 hover:bg-red-600 text-white shadow-sm">
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Change to Repetition
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-red-800 text-white">
+                        Shortcut: R
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" onClick={() => addInvalidSegment("filler_words")} className="bg-yellow-500 hover:bg-yellow-600 text-white shadow-sm">
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Change to Filler Words
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-yellow-800 text-white">
+                        Shortcut: F
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" onClick={() => addInvalidSegment("long_pause")} className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm">
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Change to Long Pause
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-blue-800 text-white">
+                        Shortcut: P
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" onClick={handleRemoveInvalidSegment} className="bg-red-600 hover:bg-red-700 text-white shadow-sm">
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Remove Invalid Segment
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-red-800 text-white">
+                        Shortcut: D
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={() => {
+                          setSelectedRange(null);
+                          setSelectedInvalidIndex(null);
+                        }} className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                          Cancel
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-blue-800 text-white">
+                        Shortcut: Esc
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" onClick={() => addInvalidSegment("repetition")} className="bg-red-500 hover:bg-red-600 text-white shadow-sm">
+                          Mark as Repetition
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-red-800 text-white">
+                        Shortcut: R
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" onClick={() => addInvalidSegment("filler_words")} className="bg-yellow-500 hover:bg-yellow-600 text-white shadow-sm">
+                          Mark as Filler Words
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-yellow-800 text-white">
+                        Shortcut: F
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" onClick={() => addInvalidSegment("long_pause")} className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm">
+                          Mark as Long Pause
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-blue-800 text-white">
+                        Shortcut: P
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={() => setSelectedRange(null)} className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                          Clear Selection
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="bg-blue-800 text-white">
+                        Shortcut: Esc
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -437,6 +603,10 @@ const TranscriptEditor: React.FC = () => {
                   <div className="flex justify-between items-center border-b border-blue-50 pb-2">
                     <Badge className="bg-blue-100 text-blue-800 font-mono">p</Badge>
                     <span className="text-gray-700">Mark as Long Pause</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-blue-50 pb-2">
+                    <Badge className="bg-blue-100 text-blue-800 font-mono">d</Badge>
+                    <span className="text-gray-700">Delete Invalid Segment</span>
                   </div>
                   <div className="flex justify-between items-center border-b border-blue-50 pb-2">
                     <Badge className="bg-blue-100 text-blue-800 font-mono">Esc</Badge>
