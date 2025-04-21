@@ -383,9 +383,12 @@ const TranscriptEditor: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto" ref={containerRef}>
-      <Card className="border border-blue-100 shadow-md bg-white overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+    <div
+      className={`w-full max-w-6xl mx-auto ${isFullscreen ? "h-full flex flex-col" : ""}`}
+      ref={containerRef}
+    >
+      <Card className="border border-blue-100 shadow-md bg-white overflow-hidden flex-grow flex flex-col">
+        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 flex-shrink-0">
           <CardTitle className="text-lg font-semibold text-blue-800 flex items-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -457,11 +460,11 @@ const TranscriptEditor: React.FC = () => {
           </div>
         </CardHeader>
 
-        <CardContent className="p-4">
+        <CardContent className="p-4 flex-grow overflow-auto pb-1">
           <ScrollArea
             className={`${
-              isFullscreen ? "h-[calc(100vh-300px)]" : "h-60"
-            } mb-4 border border-blue-100 rounded-lg`}
+              isFullscreen ? "h-[60vh]" : "h-90"
+            } mb-2 border border-blue-100 rounded-lg`}
           >
             <div className="space-y-2 p-3">
               {wordGroups.map((group, groupIndex) => (
@@ -492,61 +495,116 @@ const TranscriptEditor: React.FC = () => {
 
                   {/* Words within the group */}
                   <div className="flex flex-wrap gap-1">
-                    {group.words.map((wordObj, wordIndex) => {
-                      const globalIndex = group.startIndex + wordIndex;
+                    {(() => {
+                      // Pre-process to determine continuous selection spans
+                      const selectionRanges: { start: number; end: number; type: string | null; segmentId: number | null }[] = [];
+                      let currentRange: { start: number; end: number; type: string | null; segmentId: number | null } | null = null;
 
-                      const isSelected =
-                        selectedRange &&
-                        globalIndex >= selectedRange.startIndex &&
-                        globalIndex <= selectedRange.endIndex;
-
-                      const { type: invalidType, index: invalidIndex } =
-                        getInvalidSegmentInfoForWord(globalIndex);
-                      const isInvalid = invalidType !== null;
-
-                      // Determine styling based on selection and invalid status
-                      // Selection always takes visual priority over invalid status
-                      let bgClass = "bg-white hover:bg-gray-100 text-gray-800";
-                      let borderClass = "";
-
-                      if (isSelected) {
-                        // Clear, distinctive selection styling that overrides other styles
-                        bgClass = "bg-blue-500 hover:bg-blue-600 text-white";
-                        borderClass = "shadow-sm";
-                      } else if (isInvalid) {
-                        // Different invalid types get different border and background styles
-                        switch (invalidType) {
-                          case "repetition":
-                            bgClass = "bg-red-50 hover:bg-red-100 text-red-800";
-                            borderClass = "border border-red-200";
-                            break;
-                          case "filler_words":
-                            bgClass =
-                              "bg-yellow-50 hover:bg-yellow-100 text-yellow-800";
-                            borderClass = "border border-yellow-200";
-                            break;
-                          case "long_pause":
-                            bgClass =
-                              "bg-blue-50 hover:bg-blue-100 text-blue-800";
-                            borderClass = "border border-blue-200";
-                            break;
-                          default:
-                            bgClass =
-                              "bg-gray-50 hover:bg-gray-100 text-gray-800";
-                            borderClass = "border border-gray-200";
+                      group.words.forEach((wordObj, wordIndex) => {
+                        const globalIndex = group.startIndex + wordIndex;
+                        const isSelected = selectedRange && 
+                          globalIndex >= selectedRange.startIndex && 
+                          globalIndex <= selectedRange.endIndex;
+                        
+                        // Get invalid segment info including segment index
+                        const { type: invalidType, index: invalidIndex } = getInvalidSegmentInfoForWord(globalIndex);
+                        
+                        // Determine the current status of this word
+                        const currentStatus = isSelected ? 'selected' : invalidType;
+                        const currentSegmentId = invalidType ? invalidIndex : null;
+                        
+                        if (!currentRange) {
+                          // Start a new range
+                          currentRange = { 
+                            start: wordIndex, 
+                            end: wordIndex, 
+                            type: currentStatus, 
+                            segmentId: currentSegmentId 
+                          };
+                        } else if (
+                          currentRange.type === currentStatus && 
+                          // For invalid segments, we need to check if it's the same segment
+                          (currentStatus === 'selected' || currentRange.segmentId === currentSegmentId)
+                        ) {
+                          // Extend the current range only if it's the same segment
+                          currentRange.end = wordIndex;
+                        } else {
+                          // End the current range and start a new one
+                          selectionRanges.push({ ...currentRange });
+                          currentRange = { 
+                            start: wordIndex, 
+                            end: wordIndex, 
+                            type: currentStatus, 
+                            segmentId: currentSegmentId 
+                          };
                         }
+                      });
+
+                      // Add the last range if it exists
+                      if (currentRange) {
+                        selectionRanges.push(currentRange);
                       }
 
-                      return (
-                        <span
-                          key={wordIndex}
-                          className={`inline-block px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${bgClass} ${borderClass}`}
-                          onClick={() => handleWordClick(globalIndex)}
-                        >
-                          {wordObj.word}
-                        </span>
-                      );
-                    })}
+                      // Render each continuous range as a single container
+                      return selectionRanges.map((range, rangeIndex) => {
+                        const rangeWords = group.words.slice(range.start, range.end + 1);
+                        
+                        // Styling based on selection and invalid status
+                        let containerBgClass = "bg-white";
+                        let containerBorderClass = "rounded-md";
+                        
+                        if (range.type === 'selected') {
+                          containerBgClass = "bg-blue-500";
+                          containerBorderClass = "shadow-sm rounded-md";
+                        } else if (range.type) {
+                          // Different invalid types get different styling
+                          switch (range.type) {
+                            case "repetition":
+                              containerBgClass = "bg-red-50";
+                              containerBorderClass = "border border-red-200 rounded-md";
+                              break;
+                            case "filler_words":
+                              containerBgClass = "bg-yellow-50";
+                              containerBorderClass = "border border-yellow-200 rounded-md";
+                              break;
+                            case "long_pause":
+                              containerBgClass = "bg-blue-50";
+                              containerBorderClass = "border border-blue-200 rounded-md";
+                              break;
+                            default:
+                              containerBgClass = "bg-gray-50";
+                              containerBorderClass = "border border-gray-200 rounded-md";
+                          }
+                        }
+                        
+                        return (
+                          <span
+                            key={rangeIndex}
+                            className={`inline-flex flex-wrap items-center px-2 py-1 transition-colors ${containerBgClass} ${containerBorderClass}`}
+                          >
+                            {/* Render individual words inside the container to maintain word-level selection */}
+                            {rangeWords.map((wordObj, innerWordIndex) => {
+                              const globalIndex = group.startIndex + range.start + innerWordIndex;
+                              const wordClass = range.type === 'selected' ? 'text-white hover:underline' : 
+                                              (range.type === 'repetition' ? 'text-red-800' : 
+                                               range.type === 'filler_words' ? 'text-yellow-800' : 
+                                               range.type === 'long_pause' ? 'text-blue-800' : 'text-gray-800');
+                              
+                              return (
+                                <span
+                                  key={innerWordIndex}
+                                  className={`cursor-pointer ${wordClass} hover:opacity-80`}
+                                  onClick={() => handleWordClick(globalIndex)}
+                                  style={{ marginRight: innerWordIndex < rangeWords.length - 1 ? '0.25rem' : 0 }}
+                                >
+                                  {wordObj.word}
+                                </span>
+                              );
+                            })}
+                          </span>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               ))}
@@ -554,7 +612,11 @@ const TranscriptEditor: React.FC = () => {
           </ScrollArea>
 
           {selectedRange && (
-            <div className="border border-blue-100 rounded-lg p-4 mb-4 bg-blue-50">
+            <div
+              className={`border border-blue-100 rounded-lg p-3 mb-0 bg-blue-50 ${
+                isFullscreen ? "sticky bottom-4 z-10" : ""
+              }`}
+            >
               <div className="font-medium text-blue-800 mb-2 flex items-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -891,7 +953,7 @@ const TranscriptEditor: React.FC = () => {
           </div>
         )}
 
-        <CardFooter className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100 p-4">
+        <CardFooter className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100 pt-2 pb-3 px-4 flex-shrink-0">
           <Button
             onClick={() => {
               // Here you would typically save changes to your backend

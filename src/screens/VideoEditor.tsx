@@ -237,59 +237,63 @@ const VideoEditor = () => {
         {!isLoading &&
           !errors.length &&
           transcript.length > 0 && (
-            <div className={`bg-white ${isFullScreen ? "border-0 h-full flex flex-col" : "rounded-xl shadow-md border border-blue-100"} p-6`}>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow">
-                  <div className="flex justify-between items-center mb-6">
-                    <TabsList className="grid w-full max-w-md grid-cols-2 bg-blue-50 p-1 rounded-lg">
-                      <TabsTrigger 
+            <div className={`bg-white ${isFullScreen ? "border-0 h-full flex flex-col overflow-hidden" : "rounded-xl shadow-md border border-blue-100"} p-6`}>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col h-full">
+                <div className="flex justify-between items-center mb-6 flex-shrink-0">
+                  <TabsList className="grid w-full max-w-md grid-cols-2 bg-blue-50 p-1 rounded-lg">
+                    <TabsTrigger 
                       value="segment-review"
                       className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md"
-                      >
+                    >
                       <Film className="h-4 w-4 mr-2" />
                       Segment Review
-                      </TabsTrigger>
-                      <TabsTrigger 
+                    </TabsTrigger>
+                    <TabsTrigger 
                       value="transcript-editor"
                       className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md"
-                      >
+                    >
                       <Edit className="h-4 w-4 mr-2" />
                       Transcript Editor
-                      </TabsTrigger>
-                    </TabsList>
-                    <Button
-                      onClick={toggleFullScreen}
-                      variant="outline"
-                      size="sm"
-                      className="ml-2 border-blue-200 text-blue-600 hover:bg-blue-50"
-                    >
-                      {isFullScreen ? (
-                        <>
-                          <Minimize2 className="h-4 w-4 mr-1" />
-                          Exit Full Screen
-                        </>
-                      ) : (
-                        <>
-                          <Maximize2 className="h-4 w-4 mr-1" />
-                          Full Screen
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                    </TabsTrigger>
+                  </TabsList>
+                  <Button
+                    onClick={toggleFullScreen}
+                    variant="outline"
+                    size="sm"
+                    className="ml-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+                  >
+                    {isFullScreen ? (
+                      <>
+                        <Minimize2 className="h-4 w-4 mr-1" />
+                        Exit Full Screen
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="h-4 w-4 mr-1" />
+                        Full Screen
+                      </>
+                    )}
+                  </Button>
+                </div>
 
                 <TabsContent 
                   value="segment-review" 
-                  className={`bg-white p-4 rounded-lg ${isFullScreen ? "flex-grow" : "border border-blue-100 shadow-sm"}`}
+                  className={`bg-white rounded-lg h-full ${isFullScreen ? "overflow-auto" : "border border-blue-100 shadow-sm p-4"}`}
                 >
-                  <SegmentReview jobId={jobId} />
+                  <div className={`h-full ${isFullScreen ? "p-4" : ""}`}>
+                    <SegmentReview jobId={jobId} />
+                  </div>
                 </TabsContent>
 
                 <TabsContent 
                   value="transcript-editor"
-                  className={`bg-white p-4 rounded-lg ${isFullScreen ? "flex-grow" : "border border-blue-100 shadow-sm"}`}
+                  className={`bg-white rounded-lg h-full ${isFullScreen ? "overflow-auto" : "border border-blue-100 shadow-sm p-4"}`}
                 >
-                  <TranscriptEditor />
+                  <div className={`h-full ${isFullScreen ? "p-4" : ""}`}>
+                    <TranscriptEditor />
+                  </div>
                 </TabsContent>
-                </Tabs>
+              </Tabs>
             </div>
           )}
       </div>

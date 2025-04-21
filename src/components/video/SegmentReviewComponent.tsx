@@ -90,15 +90,15 @@ const SegmentReview: React.FC<SegmentReviewProps> = ({ jobId, onPlaySegment }) =
   const isLoading = transcriptLoading || invalidSegmentsLoading;
 
   return (
-    <div className="space-y-4 h-full flex flex-col" ref={containerRef}>
-      <h2 className="text-xl font-semibold mb-2 text-gray-800 flex items-center">
+    <div className="w-full h-full flex flex-col" ref={containerRef}>
+      <h2 className="text-xl font-semibold mb-2 text-gray-800 flex items-center flex-shrink-0">
         <ClipboardList className="h-5 w-5 mr-2 text-blue-500" />
         Invalid Segments
       </h2>
       
-      <Card className="bg-white shadow-md border border-blue-100 rounded-xl overflow-hidden flex-grow flex flex-col">
+      <Card className="bg-white shadow-md border border-blue-100 rounded-xl overflow-hidden flex-grow flex flex-col w-full">
         <CardContent className="p-4 flex-grow flex flex-col">
-          <ScrollArea className={isFullscreen ? "h-[calc(100vh-220px)]" : "h-[350px]"}>
+          <ScrollArea className={`${isFullscreen ? "h-[calc(100vh-180px)]" : "h-[350px]"} flex-grow`}>
             {invalidSegments.length > 0 ? (
               <div className="space-y-3">
                 {invalidSegments.map((segment, index) => (
@@ -162,7 +162,7 @@ const SegmentReview: React.FC<SegmentReviewProps> = ({ jobId, onPlaySegment }) =
                 ))}
               </div>
             ) : (
-              <div className="text-center py-16 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <div className="text-center py-16 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300 h-full flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
                   <FileText className="h-12 w-12 text-gray-400" />
                   <span className="font-medium">No invalid segments found or all have been processed.</span>
