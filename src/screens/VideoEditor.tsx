@@ -9,7 +9,8 @@ import { useParams } from "react-router-dom";
 import SegmentReview from "@/components/video/SegmentReviewComponent";
 import TranscriptEditor from "@/components/video/TranscriptEditorComponent";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Film, Edit } from "lucide-react";
+import { Film, Edit, Maximize2, Minimize2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const VideoEditor = () => {
   const { job_id: jobId } = useParams();
@@ -23,7 +24,7 @@ const VideoEditor = () => {
     data: null,
   });
   const [activeTab, setActiveTab] = useState("segment-review");
-
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Get invalid segments store actions and state
   const {
@@ -50,6 +51,11 @@ const VideoEditor = () => {
     );
 
     return currentStatusIndex < processedInvalidSegmentIndex;
+  };
+
+  // Toggle fullscreen mode
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
   };
 
   // Check project status
@@ -104,6 +110,20 @@ const VideoEditor = () => {
     }
   }, [jobId]);
 
+  // Effect to handle ESC key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullScreen) {
+        setIsFullScreen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFullScreen]);
+
   // Show loading state if anything is loading
   const isLoading =
     statusState.isLoading || transcriptLoading || invalidSegmentsLoading;
@@ -116,14 +136,16 @@ const VideoEditor = () => {
   ].filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100">
-      <div className="container mx-auto p-6 space-y-6">
-        <header className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-          <h1 className="text-2xl font-bold text-gray-800">Video Editor</h1>
-          <p className="text-gray-500 mt-1">
-            Split and refine your video segments
-          </p>
-        </header>
+    <div className={`${isFullScreen ? "fixed inset-0 z-50 bg-white overflow-hidden flex flex-col" : "min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100"}`}>
+      <div className={`${isFullScreen ? "p-4 flex flex-col flex-grow" : "container mx-auto p-6"} space-y-6 ${isFullScreen ? "h-full" : ""}`}>
+        {!isFullScreen && (
+          <header className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+            <h1 className="text-2xl font-bold text-gray-800">Video Editor</h1>
+            <p className="text-gray-500 mt-1">
+              Split and refine your video segments
+            </p>
+          </header>
+        )}
 
         {/* Display any errors */}
         {errors.length > 0 && (
@@ -154,7 +176,7 @@ const VideoEditor = () => {
         )}
 
         {/* Project Status Information */}
-        {statusState.data && !isLoading && (
+        {!isFullScreen && statusState.data && !isLoading && (
           <div className="bg-white rounded-xl shadow-md p-6 border border-blue-100">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center">
               <svg
@@ -215,35 +237,55 @@ const VideoEditor = () => {
         {!isLoading &&
           !errors.length &&
           transcript.length > 0 && (
-            <div className="bg-white rounded-xl shadow-md p-6 border border-blue-100">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6 bg-blue-50 p-1 rounded-lg">
-                  <TabsTrigger 
-                  value="segment-review"
-                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md"
-                  >
-                  <Film className="h-4 w-4 mr-2" />
-                  Segment Review
-                  </TabsTrigger>
-                  <TabsTrigger 
-                  value="transcript-editor"
-                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md"
-                  >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Transcript Editor
-                  </TabsTrigger>
-                </TabsList>
+            <div className={`bg-white ${isFullScreen ? "border-0 h-full flex flex-col" : "rounded-xl shadow-md border border-blue-100"} p-6`}>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-grow">
+                  <div className="flex justify-between items-center mb-6">
+                    <TabsList className="grid w-full max-w-md grid-cols-2 bg-blue-50 p-1 rounded-lg">
+                      <TabsTrigger 
+                      value="segment-review"
+                      className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md"
+                      >
+                      <Film className="h-4 w-4 mr-2" />
+                      Segment Review
+                      </TabsTrigger>
+                      <TabsTrigger 
+                      value="transcript-editor"
+                      className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md"
+                      >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Transcript Editor
+                      </TabsTrigger>
+                    </TabsList>
+                    <Button
+                      onClick={toggleFullScreen}
+                      variant="outline"
+                      size="sm"
+                      className="ml-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+                    >
+                      {isFullScreen ? (
+                        <>
+                          <Minimize2 className="h-4 w-4 mr-1" />
+                          Exit Full Screen
+                        </>
+                      ) : (
+                        <>
+                          <Maximize2 className="h-4 w-4 mr-1" />
+                          Full Screen
+                        </>
+                      )}
+                    </Button>
+                  </div>
 
                 <TabsContent 
                   value="segment-review" 
-                  className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm"
+                  className={`bg-white p-4 rounded-lg ${isFullScreen ? "flex-grow" : "border border-blue-100 shadow-sm"}`}
                 >
                   <SegmentReview jobId={jobId} />
                 </TabsContent>
 
                 <TabsContent 
                   value="transcript-editor"
-                  className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm"
+                  className={`bg-white p-4 rounded-lg ${isFullScreen ? "flex-grow" : "border border-blue-100 shadow-sm"}`}
                 >
                   <TranscriptEditor />
                 </TabsContent>

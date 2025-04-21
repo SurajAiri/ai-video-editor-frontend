@@ -3,6 +3,7 @@ import UploadScreen from "./screens/UploadScreen"
 import VideoAnalysisLoading from "./screens/AnalysisScreen"
 import TestScreen from "./screens/TestScreen"
 import VideoEditor from "./screens/VideoEditor"
+import TranscriptEditor from "./components/video/TranscriptEditorComponent"
 
 
 
@@ -14,6 +15,8 @@ function App() {
         <Route path="/" element={<UploadScreen />} />
         <Route path="/analysis/:job_id" element={<VideoAnalysisLoading />} />
         <Route path="/editor/:job_id" element={<VideoEditor />} /> 
+        <Route path="/tc" element={<TranscriptEditor />} /> 
+        
         <Route path="/test" element={<TestScreen />} />
         <Route path="*" element={<div>Not Found</div>} />
       </Routes>

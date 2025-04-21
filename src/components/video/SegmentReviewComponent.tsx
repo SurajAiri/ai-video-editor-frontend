@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -23,12 +23,40 @@ const SegmentReview: React.FC<SegmentReviewProps> = ({ jobId, onPlaySegment }) =
   } = useInvalidStore();
 
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Get transcript data from store
   const {
     transcript,
     isLoading: transcriptLoading
   } = useTranscriptStore();
+
+  // Check fullscreen status
+  useEffect(() => {
+    const checkFullscreen = () => {
+      const container = containerRef.current;
+      if (container) {
+        const isInFullscreenTab = container.closest('[data-state="active"]')?.classList.contains('flex-grow');
+        setIsFullscreen(!!isInFullscreenTab);
+      }
+    };
+
+    // Initial check
+    checkFullscreen();
+
+    // Setup a mutation observer to detect DOM changes (when switching tabs)
+    const observer = new MutationObserver(checkFullscreen);
+    if (containerRef.current?.parentElement) {
+      observer.observe(containerRef.current.parentElement, { 
+        attributes: true, 
+        subtree: true, 
+        attributeFilter: ['class', 'data-state']
+      });
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   // Find transcript text for a given time range
   const getTranscriptTextForSegment = (startTime: number, endTime: number) => {
@@ -55,23 +83,22 @@ const SegmentReview: React.FC<SegmentReviewProps> = ({ jobId, onPlaySegment }) =
 
   // Handle segment removal action
   const handleRemoveSegment = (index: number) => {
-    removeInvalidSegment(index, jobId);
+    removeInvalidSegment(index);
   };
 
   // Loading state
   const isLoading = transcriptLoading || invalidSegmentsLoading;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col" ref={containerRef}>
       <h2 className="text-xl font-semibold mb-2 text-gray-800 flex items-center">
         <ClipboardList className="h-5 w-5 mr-2 text-blue-500" />
         Invalid Segments
       </h2>
       
-      <Card className="bg-white shadow-md border border-blue-100 rounded-xl overflow-hidden">
-       
-        <CardContent className="p-4">
-          <ScrollArea className="h-[350px] pr-3">
+      <Card className="bg-white shadow-md border border-blue-100 rounded-xl overflow-hidden flex-grow flex flex-col">
+        <CardContent className="p-4 flex-grow flex flex-col">
+          <ScrollArea className={isFullscreen ? "h-[calc(100vh-220px)]" : "h-[350px]"}>
             {invalidSegments.length > 0 ? (
               <div className="space-y-3">
                 {invalidSegments.map((segment, index) => (
@@ -99,7 +126,10 @@ const SegmentReview: React.FC<SegmentReviewProps> = ({ jobId, onPlaySegment }) =
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handlePlaySegment(segment.start_time)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlaySegment(segment.start_time);
+                            }}
                             className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 hover:border-blue-300"
                           >
                             <Play className="h-3 w-3 mr-1" />
@@ -108,7 +138,10 @@ const SegmentReview: React.FC<SegmentReviewProps> = ({ jobId, onPlaySegment }) =
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleRemoveSegment(index)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveSegment(index);
+                            }}
                             className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200 hover:border-red-300"
                           >
                             <X className="h-3 w-3 mr-1" />
