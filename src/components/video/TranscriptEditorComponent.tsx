@@ -20,6 +20,7 @@ import useTranscriptStore from "@/stores/TranscriptStore";
 import { useInvalidStore } from "@/stores/InvalidStore";
 import { TranscriptWordModel } from "@/types/TranscriptWordModel";
 import { InvalidModel } from "@/types/InvalidModel";
+import { saveInvalidSegments } from "@/apis/api";
 
 interface WordGroup {
   words: TranscriptWordModel[];
@@ -280,6 +281,13 @@ const TranscriptEditor: React.FC = () => {
 
     return { startIndex, endIndex };
   };
+
+  const handleSaveInvalids = async ()=>{
+    // Here you would typically save changes to your backend
+    console.log("Saving invalid segments", invalidSegments);
+    const res = await saveInvalidSegments("d22c4d7c-f4e8-4c13-b2a6-805cd1c1696f", invalidSegments);
+    console.log("Save response:", res);
+  }
 
   // Word selection in transcript (individual word level)
   const handleWordClick = (globalIndex: number) => {
@@ -955,10 +963,7 @@ const TranscriptEditor: React.FC = () => {
 
         <CardFooter className="bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-100 pt-2 pb-3 px-4 flex-shrink-0">
           <Button
-            onClick={() => {
-              // Here you would typically save changes to your backend
-              console.log("Saving transcript changes", invalidSegments);
-            }}
+            onClick={handleSaveInvalids}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-sm"
           >
             <Save className="h-4 w-4 mr-2" />

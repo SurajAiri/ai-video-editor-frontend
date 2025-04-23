@@ -1,4 +1,5 @@
 // src/apis/api.ts
+import { InvalidModel } from '@/types/InvalidModel';
 import { ResponseModel } from '@/types/ResponseModel';
 import axios from 'axios';
 
@@ -57,6 +58,27 @@ export const getInvalidSegments = async (jobId: string): Promise<ResponseModel> 
     return response.data;
   } catch (error) {
     console.error('Error getting invalid segments:', error);
+    throw error;
+  }
+}
+
+export const simplifyInvalidModels = (invalids: InvalidModel[]): Pick<InvalidModel, 'start_time' | 'end_time' | 'type' | 'is_entire'>[] => {
+  return invalids.map(invalid => ({
+    start_time: invalid.start_time,
+    end_time: invalid.end_time,
+    type: invalid.type,
+    is_entire: invalid.is_entire
+  }));
+};
+
+export const saveInvalidSegments = async (jobId: string, segments: InvalidModel[]): Promise<ResponseModel> => {
+
+  try {
+    // const response = await axios.post(`${API_BASE_URL}/override_invalids/${jobId}`);
+    const response = await axios.post(`${API_BASE_URL}/override_invalids/${jobId}`, { data: simplifyInvalidModels(segments) });
+    return response.data;
+  } catch (error) {
+    console.error('Error saving invalid segments:', error);
     throw error;
   }
 }

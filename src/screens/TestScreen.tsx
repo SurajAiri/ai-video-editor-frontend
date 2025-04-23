@@ -1,12 +1,13 @@
-import { getInvalidSegments, getStatus, getTranscriptWord, processAll } from '@/apis/api';
+import { getInvalidSegments, getStatus, getTranscriptWord, processAll, saveInvalidSegments } from '@/apis/api';
 import React from 'react';
 
 const TestScreen: React.FC = () => {
   
     const handleApiCall = async () => {
-      const jobId = "d22c4d7c-f4e8-4c13-b2a6-805cd1c1696f";
-      const response = await getInvalidSegments(jobId);
-      console.log(response);
+      // const jobId = "d22c4d7c-f4e8-4c13-b2a6-805cd1c1696f";
+      // const segments = [];
+      // const response = await saveInvalidSegments(jobId, segments);
+      // console.log(response);
 
     }
 
