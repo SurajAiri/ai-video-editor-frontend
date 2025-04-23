@@ -82,3 +82,15 @@ export const saveInvalidSegments = async (jobId: string, segments: InvalidModel[
     throw error;
   }
 }
+
+export const trimVideo = async (jobId: string): Promise<ResponseModel> => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/trim`, {
+      job_id: jobId
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error trimming video:', error);
+    throw error;
+  }
+};

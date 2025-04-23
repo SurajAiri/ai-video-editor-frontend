@@ -44,6 +44,7 @@ const TranscriptEditor: React.FC = () => {
     editing: invalidSegments,
     setEditing,
     removeInvalidSegment,
+    jobId,
   } = useInvalidStore();
 
   // Local state
@@ -285,7 +286,7 @@ const TranscriptEditor: React.FC = () => {
   const handleSaveInvalids = async ()=>{
     // Here you would typically save changes to your backend
     console.log("Saving invalid segments", invalidSegments);
-    const res = await saveInvalidSegments("d22c4d7c-f4e8-4c13-b2a6-805cd1c1696f", invalidSegments);
+    const res = await saveInvalidSegments(jobId || "", invalidSegments);
     console.log("Save response:", res);
   }
 
